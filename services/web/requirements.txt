@@ -1,0 +1,6 @@
+Flask==3.0.2
+gunicorn==20.1.0
+Flask-OAuthlib==0.9.7
+Flask-PyMongo==2.3.0
+pydantic==2.6.1
+fastapi==0.109.2
