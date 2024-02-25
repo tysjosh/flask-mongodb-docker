@@ -18,7 +18,7 @@ from .objectid import PydanticObjectId
 # Configure Flask & Flask-PyMongo:
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
-app.config["MONGO_URI"] = os.getenv("MONGO_URI")
+app.config["MONGO_URI"] = f"mongodb://{os.getenv('MONGODB_USERNAME')}:{os.getenv('MONGODB_PASSWORD')}@{os.environ('MONGODB_HOSTNAME')}:{os.environ('MONGODB_PORT')}/{os.environ('MONGODB_DATABASE')}"
 pymongo = PyMongo(app)
 
 oauth = OAuth(app)
