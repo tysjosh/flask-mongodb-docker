@@ -6,7 +6,7 @@ from datetime import datetime
 import os
 
 import flask
-from flask import Flask, request, url_for, jsonify, session, abort, redirect
+from flask import Flask, request, url_for, jsonify, session, abort, redirect, render_template
 from authlib.integrations.flask_client import OAuth
 from flask_pymongo import PyMongo
 from pymongo.errors import DuplicateKeyError
@@ -25,18 +25,13 @@ app.config["MONGO_URI"] = os.environ.get('MONGO_URI')
 pymongo = PyMongo(app)
 
 oauth = OAuth(app)
-google = oauth.register(
+oauth.register(
     name='google',
     client_id=os.environ.get("GOOGLE_CLIENT_ID"),
     client_secret=os.environ.get("GOOGLE_SECRET_KEY"),
     client_kwargs={
-        'scope': 'profile email',
+        'scope': 'openid profile email',
     },
-    api_base_url='https://www.googleapis.com/oauth2/v1/',
-    authorize_params=None,
-    access_token_params=None,
-    access_token_url='https://accounts.google.com/o/oauth2/token',
-    authorize_url='https://accounts.google.com/o/oauth2/auth',
     server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
 )
 
@@ -53,25 +48,18 @@ def login_is_required(function):
 
 @app.route('/')
 def index():
-    if 'user' in session:
-        me = google.get('userinfo')
-        return jsonify({'data': me.data})
-    return 'Hello! Log in with your Google account: <a href="/login">Log in</a>'
+    user = session.get('user')
+    return render_template('index.html', user=user)
 
 @app.route('/login')
 def login():
     redirect_uri = url_for('authorized', _external=True)
-    return google.authorize_redirect(redirect_uri)
+    return oauth.google.authorize_redirect(redirect_uri)
 
 @app.route('/login/authorized')
 def authorized():
-    token = google.authorize_access_token()
-    
-    resp = google.get('userinfo')  # userinfo contains stuff u specificed in the scrope
-    user_info = resp.json()
-    session['user'] = user_info
-    # You can perform registration process using this information if needed.
-
+    token = oauth.google.authorize_access_token()
+    session['user'] = token['userinfo']
     return redirect(url_for('index'))
 
 @app.route('/logout')
@@ -99,6 +87,7 @@ def resource_not_found(e):
 # Get a reference to the recipes collection.
 # Uses a type-hint, so that your IDE knows what's happening!
 recipes: Collection = pymongo.db.recipes
+
 
 @app.route("/cocktails/")
 def list_cocktails():
