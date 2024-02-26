@@ -30,7 +30,7 @@ google = oauth.register(
     client_id=os.environ.get("GOOGLE_CLIENT_ID"),
     client_secret=os.environ.get("GOOGLE_SECRET_KEY"),
     client_kwargs={
-        'scope': 'openid profile email',
+        'scope': 'profile email',
     },
     api_base_url='https://www.googleapis.com/oauth2/v1/',
     authorize_params=None,
@@ -52,7 +52,6 @@ def login_is_required(function):
 
 
 @app.route('/')
-@login_is_required
 def index():
     if 'user' in session:
         me = google.get('userinfo')
@@ -67,7 +66,10 @@ def login():
 @app.route('/login/authorized')
 def authorized():
     token = google.authorize_access_token()
-    session['user'] = token['userinfo']
+    
+    resp = google.get('userinfo')  # userinfo contains stuff u specificed in the scrope
+    user_info = resp.json()
+    session['user'] = user_info
     # You can perform registration process using this information if needed.
 
     return redirect(url_for('index'))
@@ -148,7 +150,6 @@ def new_cocktail():
     cocktail = Cocktail(**raw_cocktail)
     insert_result = recipes.insert_one(cocktail.to_bson())
     cocktail.id = PydanticObjectId(str(insert_result.inserted_id))
-    print(cocktail)
 
     return cocktail.to_json()
 
