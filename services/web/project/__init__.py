@@ -14,18 +14,21 @@ from pymongo.collection import Collection, ReturnDocument
 
 from .models import Cocktail
 from .objectid import PydanticObjectId
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Configure Flask & Flask-PyMongo:
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
-app.config["MONGO_URI"] = f"mongodb://{os.getenv('MONGODB_USERNAME')}:{os.getenv('MONGODB_PASSWORD')}@{os.environ('MONGODB_HOSTNAME')}:{os.environ('MONGODB_PORT')}/{os.environ('MONGODB_DATABASE')}"
+app.config["SECRET_KEY"] = os.environ.get('SECRET_KEY')
+app.config["MONGO_URI"] = os.environ.get('MONGO_URI')
 pymongo = PyMongo(app)
 
 oauth = OAuth(app)
 google = oauth.register(
     name='google',
-    client_id=os.getenv("GOOGLE_CLIENT_ID"),
-    client_secret=os.getenv("GOOGLE_SECRET_KEY"),
+    client_id=os.environ.get("GOOGLE_CLIENT_ID"),
+    client_secret=os.environ.get("GOOGLE_SECRET_KEY"),
     client_kwargs={
         'scope': 'openid profile email',
     },
@@ -37,9 +40,6 @@ google = oauth.register(
     server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
 )
 
-# Get a reference to the recipes collection.
-# Uses a type-hint, so that your IDE knows what's happening!
-recipes: Collection = pymongo.db.recipes
 
 def login_is_required(function):
     def wrapper(*args, **kwargs):
@@ -52,6 +52,7 @@ def login_is_required(function):
 
 
 @app.route('/')
+@login_is_required
 def index():
     if 'user' in session:
         me = google.get('userinfo')
@@ -60,7 +61,7 @@ def index():
 
 @app.route('/login')
 def login():
-    redirect_uri = url_for('auth', _external=True)
+    redirect_uri = url_for('authorized', _external=True)
     return google.authorize_redirect(redirect_uri)
 
 @app.route('/login/authorized')
@@ -75,10 +76,6 @@ def authorized():
 def logout():
     session.pop('user', None)
     return redirect(url_for('index'))
-
-@oauth.tokengetter
-def get_google_oauth_token():
-    return session.get('user')
 
 
 @app.errorhandler(404)
@@ -96,7 +93,11 @@ def resource_not_found(e):
     """
     return jsonify(error=f"Duplicate key error."), 400
 
-@login_is_required
+
+# Get a reference to the recipes collection.
+# Uses a type-hint, so that your IDE knows what's happening!
+recipes: Collection = pymongo.db.recipes
+
 @app.route("/cocktails/")
 def list_cocktails():
     """
@@ -139,7 +140,6 @@ def list_cocktails():
         "_links": links,
     }
 
-@login_is_required
 @app.route("/cocktails/", methods=["POST"])
 def new_cocktail():
     raw_cocktail = request.get_json()
