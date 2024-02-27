@@ -14,6 +14,8 @@ services:
       - db
   db:
     image: mongo:5.0
+    ports:
+      - 27017:27017
     volumes:
       - mongodb_data_prod:/data/db
     env_file:

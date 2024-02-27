@@ -3,6 +3,7 @@ version: '3.8'
 services:
   web:
     build: ./services/web
+    container_name: flask_web
     command: python manage.py run -h 0.0.0.0
     volumes:
       - ./services/web/:/usr/src/app/
